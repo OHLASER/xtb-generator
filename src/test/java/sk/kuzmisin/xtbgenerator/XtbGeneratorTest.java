@@ -9,15 +9,71 @@ import org.junit.Test;
 import java.io.*;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 
+import javax.xml.parsers.ParserConfigurationException;
+
+
 import static org.junit.Assert.*;
 
 public class XtbGeneratorTest {
+    static InputStream loadStreamFromClass(String resourceName) {
+        InputStream is = XtbGeneratorTest.class.getResourceAsStream(
+            "/" + resourceName);
 
+        byte[] buffer = new byte[1024];
+        
+        is.mark(Integer.MAX_VALUE);
+
+
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        try {
+            while (true) {
+                int readSize = 0;
+                readSize = is.read(buffer, 0, buffer.length);
+                if (readSize > 0) {
+                    os.write(buffer, 0, readSize);
+                } else {
+                    break;
+                }
+                
+            }
+        } catch (java.io.IOException ex) {
+        }
+        try {
+            is.reset(); 
+        } catch (java.io.IOException ex) {
+        }
+        return new ByteArrayInputStream(os.toByteArray());
+    }
+
+    static String getStringFromClass(String resourceName) {
+        InputStream xtbStream = loadStreamFromClass(resourceName);
+        InputStreamReader xtbReader = new InputStreamReader(xtbStream, 
+            StandardCharsets.UTF_8); 
+        
+        char[] buffer = new char[1024];
+        StringWriter sw = new StringWriter();
+        try {
+            while (true) {
+                int readSize = xtbReader.read(buffer, 0, buffer.length);
+                if (readSize != -1) {
+                    sw.write(buffer, 0, readSize); 
+                } else {
+                    break;
+                }
+           }
+           xtbStream.close();
+        } catch (IOException ex) {
+        }
+        String result = sw.toString().trim();
+        return result;
+
+    }
     protected StringWriter output;
 
     /**
@@ -28,8 +84,19 @@ public class XtbGeneratorTest {
             if (this.translationFile == null) {
                 return null;
             }
-            return XtbGeneratorTest.class.getResourceAsStream("/" + "messages.xtb");
+            InputStream result = getMessagesXtbStream();
+            return result;
         }
+
+
+        private InputStream getMessagesXtbStream() {
+            return loadStreamFromClass("messages.xtb");
+        }
+
+        String getMessagesContents() {
+            return getStringFromClass("messages.xtb");
+        }
+
 
         protected Writer getOutputWriter() {
             output = new StringWriter();
@@ -56,22 +123,27 @@ public class XtbGeneratorTest {
     public void testGetMessagesFromTranslationFile() throws IOException {
         final MockXtbGenerator xtbGenerator = new MockXtbGenerator();
         xtbGenerator.setTranslationFile("messages.xtb");
-        XtbMessageBundle xtbMessageBundle = xtbGenerator.getMessageBundleFromTranslationFile();
+        XtbMessageBundle xtbMessageBundle;
+		try {
+			xtbMessageBundle = xtbGenerator.getMessageBundleFromTranslationFile();
 
-        Iterator<JsMessage> bundleIterator = xtbMessageBundle.getAllMessages().iterator();
-        int i;
-        for (i = 0; bundleIterator.hasNext(); i++) {
-            bundleIterator.next();
-        }
 
-        assertEquals(4, i);
+			Iterator<JsMessage> bundleIterator = xtbMessageBundle.getAllMessages().iterator();
+			int i;
+			for (i = 0; bundleIterator.hasNext(); i++) {
+				bundleIterator.next();
+			}
+
+        	assertEquals(4, i);
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}	
     }
 
     /**
      * Test comparing JS vs. XTB -> method must return only "NEW"
      */
-    @Test
-    public void getMessages() throws IOException {
+    private void getMessages() throws IOException, ParserConfigurationException {
         final MockXtbGenerator xtbGenerator = new MockXtbGenerator();
         xtbGenerator.setTranslationFile("messages.xtb");
 
@@ -93,37 +165,34 @@ public class XtbGeneratorTest {
      * Complex test without already existed translation file
      */
     @Test
-    public void testEmpty() throws IOException, URISyntaxException {
+    public void testEmpty() throws IOException, URISyntaxException,
+        ParserConfigurationException {
         final MockXtbGenerator xtbGenerator = new MockXtbGenerator();
         xtbGenerator.setJsFile(getTestCollectionFrom("messages.js"));
         xtbGenerator.setLang("cs");
         xtbGenerator.run();
-
-        String expected = Files.toString(
-            new File(XtbGeneratorTest.class.getResource("/" + "messages.xtb").toURI()),
-            Charset.defaultCharset()
-        );
-
-        assertEquals(expected, output.toString());
+        
+        assertEquals(xtbGenerator.getMessagesContents(), output.toString());
     }
 
     /**
      * Complex test against translation file
      */
     @Test
-    public void testAppend() throws IOException, URISyntaxException {
+    public void testAppend() throws IOException, URISyntaxException,
+        ParserConfigurationException  {
         final MockXtbGenerator xtbGenerator = new MockXtbGenerator();
         xtbGenerator.setJsFile(getTestCollectionFrom("messages.js", "messages2add.js"));
         xtbGenerator.setTranslationFile("messages.xtb");
         xtbGenerator.setLang("cs");
         xtbGenerator.run();
 
-        String expected = Files.toString(
-                new File(XtbGeneratorTest.class.getResource("/" + "messages_append.xtb").toURI()),
-                Charset.defaultCharset()
-        );
 
-        assertEquals(expected, output.toString());
+        String expected = getStringFromClass("messages_append.xtb");
+
+        String actual = output.toString();
+        System.out.println(actual);
+        assertEquals(expected, actual);
     }
 
     protected Collection<SourceFile> getTestCollectionFrom(String... fileName) throws IOException {

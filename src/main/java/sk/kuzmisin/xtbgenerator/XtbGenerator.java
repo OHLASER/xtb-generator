@@ -8,6 +8,9 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+
+import javax.xml.parsers.ParserConfigurationException;
+
 public class XtbGenerator {
 
     protected String lang;
@@ -21,7 +24,7 @@ public class XtbGenerator {
     protected String xtbOutputFile;
 
     public static void process(String lang, String projectId, Collection<SourceFile> jsFiles, String translationFile, String xtbOutputFile)
-            throws IOException {
+            throws IOException, ParserConfigurationException {
 
         final XtbGenerator xtbGenerator = new XtbGenerator();
         xtbGenerator.setLang(lang);
@@ -53,7 +56,7 @@ public class XtbGenerator {
         this.xtbOutputFile = xtbOutputFile;
     }
 
-    public void run() throws IOException {
+    public void run() throws IOException, ParserConfigurationException {
         Writer outputWriter = null;
 
         try {
@@ -82,7 +85,7 @@ public class XtbGenerator {
         }
     }
 
-    public Map<String, JsMessage> getMessages() throws IOException {
+    public Map<String, JsMessage> getMessages() throws IOException, ParserConfigurationException {
         final Map<String, JsMessage> jsMessages = getMessagesFromJs();
         XtbMessageBundle xtbMessageBundle = getMessageBundleFromTranslationFile();
         if (xtbMessageBundle == null) {
@@ -120,15 +123,22 @@ public class XtbGenerator {
         return messageMap;
     }
 
-    public XtbMessageBundle getMessageBundleFromTranslationFile() throws IOException {
+    public XtbMessageBundle getMessageBundleFromTranslationFile() throws IOException, ParserConfigurationException {
         InputStream translationInputStream = getTranslationFileInputStream();
         if (translationInputStream == null) {
             return null;
         }
+        System.out.println("getMessageBundleFromTranslationFile()-1"); 
 
-        final XtbMessageBundle xtbMessageBundle = new XtbMessageBundle(translationInputStream, projectId);
+        final XtbMessageBundle xtbMessageBundle = new XtbMessageBundle(
+            translationInputStream, projectId);
         translationInputStream.close();
-
+        if (xtbMessageBundle == null) {
+            ParserConfigurationException ex =
+                new ParserConfigurationException();
+            System.out.println("getMessageBundleFromTranslationFile()-2"); 
+            throw ex;
+        }
         return xtbMessageBundle;
     }
 

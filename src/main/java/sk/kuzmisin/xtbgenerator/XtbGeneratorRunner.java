@@ -17,6 +17,10 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.xml.parsers.ParserConfigurationException;
+
+
+
 class XtbGeneratorRunner {
 
     protected static Options options = new Options();
@@ -30,7 +34,7 @@ class XtbGeneratorRunner {
         options.addOption("flagfile", true, "A file containing additional command-line options");
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, ParserConfigurationException  {
         CommandLineParser parser = new GnuParser();
 
         try {
